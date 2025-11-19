@@ -72,7 +72,7 @@ Cada meta incluye: pasos → hitos → plazos
 ### Backend
 - Node.js + Express
 - TypeScript
-- MongoDB + Mongoose
+- **SQLite + Prisma** (no requiere instalación de base de datos)
 - JWT Authentication
 - OpenAI API (análisis de diario)
 - Google Calendar API
@@ -100,6 +100,8 @@ npm run dev
 ```bash
 cd backend
 npm install
+npx prisma generate
+npx prisma migrate dev --name init
 npm run dev
 ```
 
@@ -108,7 +110,7 @@ npm run dev
 ### Backend (.env)
 ```
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/agenda2026
+DATABASE_URL="file:./dev.db"
 JWT_SECRET=tu_secreto_jwt
 GOOGLE_CLIENT_ID=tu_google_client_id
 GOOGLE_CLIENT_SECRET=tu_google_client_secret

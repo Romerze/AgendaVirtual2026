@@ -3,8 +3,9 @@
 ## 📋 Requisitos Previos
 
 - **Node.js** v18 o superior
-- **MongoDB** v6 o superior
 - **npm** o **yarn**
+
+¡No necesitas instalar ninguna base de datos! El proyecto usa **SQLite** que viene incluido.
 
 ## 🚀 Instalación Rápida
 
@@ -35,25 +36,11 @@ cd ../backend
 npm install
 ```
 
-### 3. Configurar MongoDB
+### 3. Configurar la Base de Datos
 
-Asegúrate de tener MongoDB corriendo. Puedes:
+¡No necesitas hacer nada! SQLite se configura automáticamente.
 
-**Opción A: MongoDB Local**
-```bash
-# Instalar MongoDB en tu sistema
-# Linux/macOS
-mongod
-
-# O usar Docker
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
-
-**Opción B: MongoDB Atlas (Cloud)**
-1. Crea una cuenta en [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Crea un cluster gratuito
-3. Obtén tu connection string
-4. Úsalo en el archivo `.env`
+El archivo de base de datos se creará automáticamente en `backend/dev.db` cuando inicies el servidor por primera vez.
 
 ### 4. Configurar Variables de Entorno
 
@@ -68,10 +55,10 @@ Edita el archivo `.env` con tus configuraciones:
 PORT=5000
 NODE_ENV=development
 
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017/agenda2026
+# Database (SQLite) - No necesitas cambiar esto
+DATABASE_URL="file:./dev.db"
 
-# JWT
+# JWT - IMPORTANTE: Cambia esto por un secreto único
 JWT_SECRET=tu_secreto_super_seguro_cambialo_en_produccion
 JWT_EXPIRES_IN=30d
 
@@ -98,7 +85,19 @@ VITE_API_URL=http://localhost:5000
 VITE_GOOGLE_CLIENT_ID=
 ```
 
-### 5. Ejecutar el Proyecto
+### 5. Generar la Base de Datos
+
+**Importante:** Antes de ejecutar el proyecto por primera vez, genera la base de datos:
+
+```bash
+cd backend
+npx prisma generate
+npx prisma migrate dev --name init
+```
+
+Esto creará el archivo `dev.db` con todas las tablas necesarias.
+
+### 6. Ejecutar el Proyecto
 
 **Opción A - Ejecutar todo simultáneamente (Recomendado):**
 ```bash
@@ -120,11 +119,12 @@ cd frontend
 npm run dev
 ```
 
-### 6. Acceder a la Aplicación
+### 7. Acceder a la Aplicación
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:5000
 - **Health Check**: http://localhost:5000/health
+- **Prisma Studio** (Ver/editar base de datos): `cd backend && npx prisma studio`
 
 ## 📦 Construir para Producción
 
@@ -169,10 +169,14 @@ npm run lint             # Ejecutar linter
 
 ## 🐛 Solución de Problemas
 
-### Error: "MongoDB connection failed"
-- Verifica que MongoDB esté corriendo
-- Revisa la URI de conexión en `.env`
-- Si usas MongoDB Atlas, verifica que tu IP esté en la whitelist
+### Error: "Database connection failed"
+- Verifica que ejecutaste `npx prisma migrate dev`
+- Asegúrate de que `DATABASE_URL` esté configurado en `.env`
+- El archivo `dev.db` debe existir en la carpeta `backend/`
+
+### Error: "Prisma Client did not initialize yet"
+- Ejecuta `npx prisma generate` en la carpeta backend
+- Reinicia el servidor
 
 ### Error: "Port already in use"
 - Cambia el puerto en `backend/.env`

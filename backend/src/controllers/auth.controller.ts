@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
-import User from '../models/User'
+import bcrypt from 'bcryptjs'
+import { prisma } from '../config/database'
 import { AppError } from '../middleware/errorHandler'
 import { AuthRequest } from '../middleware/auth'
 
@@ -19,26 +20,34 @@ export const register = async (
     const { name, email, password } = req.body
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email })
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+
     if (existingUser) {
       throw new AppError('Email already in use', 400)
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
+
     // Create user
-    const user = await User.create({
-      name,
-      email,
-      password,
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+      },
     })
 
     // Generate token
-    const token = generateToken(user._id.toString())
+    const token = generateToken(user.id)
 
     res.status(201).json({
       success: true,
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
@@ -61,26 +70,29 @@ export const login = async (
   try {
     const { email, password } = req.body
 
-    // Find user and include password
-    const user = await User.findOne({ email }).select('+password')
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    })
+
     if (!user) {
       throw new AppError('Invalid email or password', 401)
     }
 
     // Check password
-    const isPasswordValid = await user.comparePassword(password)
+    const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       throw new AppError('Invalid email or password', 401)
     }
 
     // Generate token
-    const token = generateToken(user._id.toString())
+    const token = generateToken(user.id)
 
     res.json({
       success: true,
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
@@ -101,7 +113,10 @@ export const getMe = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const user = await User.findById(req.userId)
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+    })
+
     if (!user) {
       throw new AppError('User not found', 404)
     }
@@ -109,7 +124,7 @@ export const getMe = async (
     res.json({
       success: true,
       data: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         avatar: user.avatar,

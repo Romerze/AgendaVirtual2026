@@ -1,0 +1,259 @@
+// Prisma Schema for Agenda Virtual 2026
+// Database: SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============= USER =============
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  calendarEvents   CalendarEvent[]
+  goals            Goal[]
+  habits           Habit[]
+  tasks            Task[]
+  journalEntries   JournalEntry[]
+  transactions     Transaction[]
+  workouts         Workout[]
+  bodyMeasurements BodyMeasurement[]
+  specialDates     SpecialDate[]
+  activities       Activity[]
+  moments          Moment[]
+}
+
+// ============= CALENDAR =============
+model CalendarEvent {
+  id            String   @id @default(uuid())
+  userId        String
+  title         String
+  description   String?
+  start         DateTime
+  end           DateTime
+  type          String // gym, work, appointment, family, love, study
+  color         String?
+  location      String?
+  googleEventId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============= GOALS =============
+model Goal {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  area        String // career, finance, fitness, personal, love, business
+  deadline    DateTime?
+  progress    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps      Step[]
+  milestones Milestone[]
+
+  @@index([userId])
+}
+
+model Step {
+  id        String  @id @default(uuid())
+  goalId    String
+  title     String
+  completed Boolean @default(false)
+  order     Int
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id        String    @id @default(uuid())
+  goalId    String
+  title     String
+  completed Boolean   @default(false)
+  deadline  DateTime?
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+// ============= HABITS =============
+model Habit {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  icon        String?
+  color       String?
+  streak      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs HabitLog[]
+
+  @@index([userId])
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  date      DateTime
+  completed Boolean
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+}
+
+// ============= TASKS =============
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  priority    String    @default("medium") // high, medium, low
+  completed   Boolean   @default(false)
+  tags        String? // JSON array stored as string
+  dueDate     DateTime?
+  recurring   String? // JSON object stored as string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============= JOURNAL =============
+model JournalEntry {
+  id         String   @id @default(uuid())
+  userId     String
+  date       DateTime @default(now())
+  mood       String // excellent, good, okay, bad, terrible
+  feeling    String
+  learned    String
+  gratitude  String
+  reflection String
+  aiAnalysis String? // JSON object stored as string
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============= FINANCE =============
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String // income, expense
+  amount      Float
+  category    String
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============= HEALTH & FITNESS =============
+model Workout {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @default(now())
+  type      String
+  exercises String // JSON array stored as string
+  duration  Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model BodyMeasurement {
+  id           String   @id @default(uuid())
+  userId       String
+  date         DateTime @default(now())
+  weight       Float?
+  bodyFat      Float?
+  measurements String? // JSON object stored as string
+  photos       String? // JSON array stored as string
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============= RELATIONSHIP =============
+model SpecialDate {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  date      DateTime
+  recurring Boolean  @default(false)
+  type      String // anniversary, birthday, custom
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Activity {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  date        DateTime?
+  completed   Boolean   @default(false)
+  rating      Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Moment {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  date        DateTime @default(now())
+  photos      String? // JSON array stored as string
+  tags        String? // JSON array stored as string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

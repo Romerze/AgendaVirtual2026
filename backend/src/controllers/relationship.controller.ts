@@ -1,16 +1,18 @@
 import { Response, NextFunction } from 'express'
-import { SpecialDate, Activity, Moment } from '../models/Relationship'
+import { prisma } from '../config/database'
 import { AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 
-// Special Dates
 export const getSpecialDates = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const dates = await SpecialDate.find({ userId: req.userId }).sort({ date: 1 })
+    const dates = await prisma.specialDate.findMany({
+      where: { userId: req.userId! },
+      orderBy: { date: 'asc' },
+    })
     res.json({ success: true, data: dates })
   } catch (error) {
     next(error)
@@ -23,9 +25,11 @@ export const createSpecialDate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const date = await SpecialDate.create({
-      ...req.body,
-      userId: req.userId,
+    const date = await prisma.specialDate.create({
+      data: {
+        ...req.body,
+        userId: req.userId!,
+      },
     })
     res.status(201).json({ success: true, data: date })
   } catch (error) {
@@ -33,14 +37,16 @@ export const createSpecialDate = async (
   }
 }
 
-// Activities
 export const getActivities = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const activities = await Activity.find({ userId: req.userId }).sort({ createdAt: -1 })
+    const activities = await prisma.activity.findMany({
+      where: { userId: req.userId! },
+      orderBy: { createdAt: 'desc' },
+    })
     res.json({ success: true, data: activities })
   } catch (error) {
     next(error)
@@ -53,9 +59,11 @@ export const createActivity = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const activity = await Activity.create({
-      ...req.body,
-      userId: req.userId,
+    const activity = await prisma.activity.create({
+      data: {
+        ...req.body,
+        userId: req.userId!,
+      },
     })
     res.status(201).json({ success: true, data: activity })
   } catch (error) {
@@ -63,15 +71,24 @@ export const createActivity = async (
   }
 }
 
-// Moments
 export const getMoments = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const moments = await Moment.find({ userId: req.userId }).sort({ date: -1 })
-    res.json({ success: true, data: moments })
+    const moments = await prisma.moment.findMany({
+      where: { userId: req.userId! },
+      orderBy: { date: 'desc' },
+    })
+
+    const parsedMoments = moments.map((m) => ({
+      ...m,
+      photos: m.photos ? JSON.parse(m.photos) : [],
+      tags: m.tags ? JSON.parse(m.tags) : [],
+    }))
+
+    res.json({ success: true, data: parsedMoments })
   } catch (error) {
     next(error)
   }
@@ -83,11 +100,25 @@ export const createMoment = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const moment = await Moment.create({
-      ...req.body,
-      userId: req.userId,
+    const { photos, tags, ...momentData } = req.body
+
+    const moment = await prisma.moment.create({
+      data: {
+        ...momentData,
+        userId: req.userId!,
+        photos: photos ? JSON.stringify(photos) : null,
+        tags: tags ? JSON.stringify(tags) : null,
+      },
     })
-    res.status(201).json({ success: true, data: moment })
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...moment,
+        photos: moment.photos ? JSON.parse(moment.photos) : [],
+        tags: moment.tags ? JSON.parse(moment.tags) : [],
+      },
+    })
   } catch (error) {
     next(error)
   }

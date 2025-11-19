@@ -35,10 +35,10 @@ Agenda Virtual 2026 es una aplicación web full-stack construida con arquitectur
 │  │  • Validation                                 │ │
 │  └───────────────────────────────────────────────┘ │
 └──────────────────────┼──────────────────────────────┘
-                       │ Mongoose ODM
+                       │ Prisma ORM
                        │
 ┌──────────────────────▼──────────────────────────────┐
-│                  MongoDB Database                    │
+│                 SQLite Database                      │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │  Users   │  │  Events  │  │  Goals/Habits/...│  │
 │  └──────────┘  └──────────┘  └──────────────────┘  │
@@ -85,11 +85,8 @@ backend/
 │   │   ├── calendar.controller.ts
 │   │   ├── goals.controller.ts
 │   │   └── ...
-│   ├── models/           # Mongoose schemas
-│   │   ├── User.ts
-│   │   ├── CalendarEvent.ts
-│   │   ├── Goal.ts
-│   │   └── ...
+│   ├── config/           # Configuración
+│   │   └── database.ts  # Prisma client
 │   ├── routes/           # Express routes
 │   │   ├── auth.routes.ts
 │   │   ├── calendar.routes.ts
@@ -99,9 +96,9 @@ backend/
 │   │   └── errorHandler.ts
 │   ├── services/         # Servicios externos
 │   ├── utils/            # Utilidades
-│   ├── config/           # Configuración
-│   │   └── database.ts
 │   └── index.ts          # Entry point
+├── prisma/
+│   └── schema.prisma    # Prisma schema (modelos de DB)
 ├── .env.example
 ├── package.json
 └── tsconfig.json
@@ -162,9 +159,10 @@ UI State → React useState/useReducer
 12. **Moment** - Momentos especiales
 
 ### Relaciones
-- Todos los modelos tienen relación `userId` → `User._id`
+- Todos los modelos tienen relación `userId` → `User.id`
 - Indexes en `userId` para consultas eficientes
-- Cascading deletes (por implementar)
+- Cascading deletes implementados con Prisma
+- Foreign keys con constraint de integridad referencial
 
 ## 🚀 Tecnologías
 
@@ -185,8 +183,8 @@ UI State → React useState/useReducer
 - **Node.js** - Runtime
 - **Express** - Web framework
 - **TypeScript** - Type safety
-- **MongoDB** - Database
-- **Mongoose** - ODM
+- **SQLite** - Database (archivo local, sin instalación)
+- **Prisma** - ORM moderno con type-safety
 - **JWT** - Authentication
 - **bcryptjs** - Password hashing
 
@@ -242,10 +240,11 @@ DELETE /api/goals/:id
 ## 📈 Escalabilidad
 
 ### Optimizaciones Implementadas
-- Indexes en MongoDB
+- Indexes en SQLite (vía Prisma)
 - React Query caching
 - Code splitting (Vite)
 - Lazy loading de componentes
+- Prisma Client optimizado
 
 ### Por Implementar
 - Redis caching
@@ -300,7 +299,8 @@ GitHub Actions:
 - DigitalOcean
 
 **Database:**
-- MongoDB Atlas
+- SQLite (incluido con el backend, no requiere servicio externo)
+- Para producción: PostgreSQL en Railway/Render o MySQL (cambiar provider en schema.prisma)
 
 ---
 

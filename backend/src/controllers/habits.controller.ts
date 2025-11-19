@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express'
-import Habit from '../models/Habit'
+import { prisma } from '../config/database'
 import { AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 
@@ -9,7 +9,11 @@ export const getHabits = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const habits = await Habit.find({ userId: req.userId }).sort({ createdAt: -1 })
+    const habits = await prisma.habit.findMany({
+      where: { userId: req.userId! },
+      include: { logs: true },
+      orderBy: { createdAt: 'desc' },
+    })
     res.json({ success: true, data: habits })
   } catch (error) {
     next(error)
@@ -22,9 +26,12 @@ export const createHabit = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const habit = await Habit.create({
-      ...req.body,
-      userId: req.userId,
+    const habit = await prisma.habit.create({
+      data: {
+        ...req.body,
+        userId: req.userId!,
+      },
+      include: { logs: true },
     })
     res.status(201).json({ success: true, data: habit })
   } catch (error) {
@@ -38,14 +45,23 @@ export const updateHabit = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const habit = await Habit.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      req.body,
-      { new: true, runValidators: true }
-    )
-    if (!habit) {
+    const existing = await prisma.habit.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
+    })
+
+    if (!existing) {
       throw new AppError('Habit not found', 404)
     }
+
+    const habit = await prisma.habit.update({
+      where: { id: req.params.id },
+      data: req.body,
+      include: { logs: true },
+    })
+
     res.json({ success: true, data: habit })
   } catch (error) {
     next(error)
@@ -58,13 +74,17 @@ export const deleteHabit = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const habit = await Habit.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.userId,
+    const habit = await prisma.habit.deleteMany({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     })
-    if (!habit) {
+
+    if (habit.count === 0) {
       throw new AppError('Habit not found', 404)
     }
+
     res.json({ success: true, message: 'Habit deleted' })
   } catch (error) {
     next(error)
@@ -78,34 +98,41 @@ export const logHabit = async (
 ): Promise<void> => {
   try {
     const { date, completed } = req.body
-    const habit = await Habit.findOne({ _id: req.params.id, userId: req.userId })
+
+    const habit = await prisma.habit.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
+    })
 
     if (!habit) {
       throw new AppError('Habit not found', 404)
     }
 
-    // Add or update log
-    const existingLogIndex = habit.logs.findIndex(
-      (log) => log.date.toDateString() === new Date(date).toDateString()
-    )
+    await prisma.habitLog.upsert({
+      where: {
+        habitId_date: {
+          habitId: req.params.id,
+          date: new Date(date),
+        },
+      },
+      update: { completed },
+      create: {
+        habitId: req.params.id,
+        date: new Date(date),
+        completed,
+      },
+    })
 
-    if (existingLogIndex > -1) {
-      habit.logs[existingLogIndex].completed = completed
-    } else {
-      habit.logs.push({ date, completed })
-    }
+    const newStreak = completed ? habit.streak + 1 : 0
+    const updatedHabit = await prisma.habit.update({
+      where: { id: req.params.id },
+      data: { streak: newStreak },
+      include: { logs: true },
+    })
 
-    // Update streak
-    // Simple streak calculation - can be improved
-    if (completed) {
-      habit.streak += 1
-    } else {
-      habit.streak = 0
-    }
-
-    await habit.save()
-
-    res.json({ success: true, data: habit })
+    res.json({ success: true, data: updatedHabit })
   } catch (error) {
     next(error)
   }

@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express'
-import Transaction, { TransactionType } from '../models/Transaction'
+import { prisma } from '../config/database'
 import { AuthRequest } from '../middleware/auth'
 import { AppError } from '../middleware/errorHandler'
 
@@ -9,7 +9,10 @@ export const getTransactions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const transactions = await Transaction.find({ userId: req.userId }).sort({ date: -1 })
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: req.userId! },
+      orderBy: { date: 'desc' },
+    })
     res.json({ success: true, data: transactions })
   } catch (error) {
     next(error)
@@ -22,9 +25,11 @@ export const createTransaction = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const transaction = await Transaction.create({
-      ...req.body,
-      userId: req.userId,
+    const transaction = await prisma.transaction.create({
+      data: {
+        ...req.body,
+        userId: req.userId!,
+      },
     })
     res.status(201).json({ success: true, data: transaction })
   } catch (error) {
@@ -38,13 +43,17 @@ export const deleteTransaction = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const transaction = await Transaction.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.userId,
+    const transaction = await prisma.transaction.deleteMany({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+      },
     })
-    if (!transaction) {
+
+    if (transaction.count === 0) {
       throw new AppError('Transaction not found', 404)
     }
+
     res.json({ success: true, message: 'Transaction deleted' })
   } catch (error) {
     next(error)
@@ -57,11 +66,13 @@ export const getSummary = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const transactions = await Transaction.find({ userId: req.userId })
+    const transactions = await prisma.transaction.findMany({
+      where: { userId: req.userId! },
+    })
 
     const summary = transactions.reduce(
       (acc, transaction) => {
-        if (transaction.type === TransactionType.INCOME) {
+        if (transaction.type === 'income') {
           acc.totalIncome += transaction.amount
         } else {
           acc.totalExpenses += transaction.amount

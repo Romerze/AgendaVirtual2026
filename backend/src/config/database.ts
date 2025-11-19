@@ -1,23 +1,27 @@
-import mongoose from 'mongoose'
+import { PrismaClient } from '@prisma/client'
+
+// Singleton instance of Prisma Client
+export const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+})
 
 export const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/agenda2026'
-
-    await mongoose.connect(mongoURI)
-
-    console.log('✅ MongoDB connected successfully')
-    console.log(`📦 Database: ${mongoose.connection.name}`)
+    await prisma.$connect()
+    console.log('✅ SQLite database connected successfully')
+    console.log(`📦 Database: ${process.env.DATABASE_URL || 'file:./dev.db'}`)
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error)
+    console.error('❌ Database connection error:', error)
     throw error
   }
 }
 
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️  MongoDB disconnected')
-})
+export const disconnectDB = async (): Promise<void> => {
+  await prisma.$disconnect()
+  console.log('⚠️  SQLite database disconnected')
+}
 
-mongoose.connection.on('error', (error) => {
-  console.error('❌ MongoDB error:', error)
+// Handle cleanup on app termination
+process.on('beforeExit', async () => {
+  await disconnectDB()
 })
